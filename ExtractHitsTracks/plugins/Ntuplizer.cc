@@ -16,8 +16,9 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
-#include "ExtractHitsTracks/interface/Ntuple.h"
+#include "test/ExtractHitsTracks/interface/Ntuple.h"
 #include "TTree.h"
+#include<iostream> 
 
 class Ntuplizer : public edm::EDFilter { // edm::EDAnalyzer
   
@@ -31,7 +32,8 @@ public:
 
   // Fills tree per ElectronChain object
   void fill( const edm::Event& event, const edm::EventSetup& setup );
-
+  void readCollections( const edm::Event&, const edm::EventSetup& );
+  
 
 private: 
 
@@ -45,23 +47,33 @@ private:
   edm::Handle< edm::View<reco::Track> > ctfTracksH_;
 
 
-  Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) 
+  const edm::EDGetTokenT<reco::BeamSpot> beamspot_;
+  edm::Handle<reco::BeamSpot> beamspotH_;
+
+}; 
+
+Ntuplizer::~Ntuplizer(){}
+
+reco::TrackPtr trk_;
+
+Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) 
   : tree_(nullptr),
     ntuple_(),
     verbose_(cfg.getParameter<int>("verbose")),
     ctfTracks_(consumes< edm::View<reco::Track> >(cfg.getParameter<edm::InputTag>("ctfTracks"))),
-    ctfTracksH_()
+    ctfTracksH_(),
+    beamspot_(consumes<reco::BeamSpot>(cfg.getParameter<edm::InputTag>("beamspot"))),
+    beamspotH_()
   {
     tree_ = fs_->make<TTree>("tree","tree");
     ntuple_.link_tree(tree_);
     std::cout << "[NTuplizer::NTuplizer] Verbosity level: "<< verbose_ << std::endl;
   }
 // Initialise the weights LUT to filter fake tracks 
- void NTtuplizer::beginRun( const edm::Run& run, const edm::EventSetup& es ) {
+ void Ntuplizer::beginRun( const edm::Run& run, const edm::EventSetup& es ) {
 //   //@@ ?
  }
 
-}
 
 bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
 	readCollections(event,setup);
@@ -71,17 +83,20 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
 
 
 void Ntuplizer::readCollections( const edm::Event& event, const edm::EventSetup& setup ) {
-	event.getByToken(beamspot_, beamspotH_);
+	event.getByToken(ctfTracks_, ctfTracksH_);
+  	event.getByToken(beamspot_, beamspotH_);
 }
 
 void Ntuplizer::fill( const edm::Event& event,
 			const edm::EventSetup& setup ) {
 
-    ntuple_.reset(); 
-    ntuple_.fill_evt( event.id() );
+    ntuple_.reset();
+    ntuple_.fill_evt(event.id());
+    //ntuple_.fill_trk( trk_, *beamspotH_ );
     tree_->Fill(); 
 
 }
+#include "FWCore/Framework/interface/MakerMacros.h"
 
 DEFINE_FWK_MODULE(Ntuplizer);
 

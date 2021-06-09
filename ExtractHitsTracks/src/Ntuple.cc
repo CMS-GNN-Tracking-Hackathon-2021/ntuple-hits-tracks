@@ -13,10 +13,10 @@ void Ntuple::link_tree( TTree *tree ) {
 
 
 
-//void Ntuple::fill_evt( const edm::EventID& id ) {
-//  run_  = id.run();
-//  lumi_ = id.luminosityBlock();
-//  evt_  = id.event();
-//}
+void Ntuple::fill_evt( const edm::EventID& id ) {
+  run_  = id.run();
+  lumi_ = id.luminosityBlock();
+  evt_  = id.event();
+}
 
 

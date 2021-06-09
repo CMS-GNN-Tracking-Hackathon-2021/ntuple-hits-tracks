@@ -1,5 +1,5 @@
-#ifndef LowPtElectrons_LowPtElectrons_IDNtuple
-#define LowPtElectrons_LowPtElectrons_IDNtuple
+#ifndef test_ExtractHitsTracks_Ntuple
+#define test_ExtractHitsTrakcs_Ntuple
 
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/Candidate/interface/CandidateFwd.h"
@@ -14,6 +14,9 @@
 #include <vector>
 
 class TTree;
+
+namespace reco { typedef edm::Ptr<Track> TrackPtr; }
+
 class Ntuple {
 
  public:
@@ -31,19 +34,22 @@ class Ntuple {
   }
   
   void link_tree( TTree* tree );
-  
-  void set_weight( float w ) { weight_ = w; }
-  void set_prescale( float p ) { prescale_ = p; }
+  void fill_evt( const edm::EventID& id ); 
+//  void set_weight( float w ) { weight_ = w; }
+ // void set_prescale( float p ) { prescale_ = p; }
 //  void set_rho( float r ) { rho_ = r; }
+//};
+ void fill_trk( const reco::TrackPtr& trk,
+		 const reco::BeamSpot& spot );
 
 
-  public:
+//  public:
 
   unsigned int run_ = 0;
-  unsigned int lumi_ = 0;
+   unsigned int lumi_ = 0;
   unsigned long long evt_ = 0;
-  float prescale_ = 0.;
-  float weight_ = 1.;
+//  float prescale_ = 0.;
+//  float weight_ = 1.;
 //  float rho_ = IDNtuple::NEG_FLOAT;
 }; 
 
