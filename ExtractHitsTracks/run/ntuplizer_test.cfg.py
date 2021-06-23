@@ -16,7 +16,7 @@ process.MessageLogger.cerr.INFO = cms.untracked.PSet(
 process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10)
+    input = cms.untracked.int32(100)
 )
 
 process.source = cms.Source(
@@ -28,6 +28,7 @@ process.source = cms.Source(
 )
 
 process.load("test.ExtractHitsTracks.Ntuplizer_cfi")
+process.ntuplizer.verbose = 0 # switch verbose mode on if >0
 
 process.TFileService = cms.Service(
     "TFileService",
