@@ -1,27 +1,18 @@
 #ifndef test_ExtractHitsTracks_Ntuple
-#define test_ExtractHitsTrakcs_Ntuple
+#define test_ExtractHitsTracks_Ntuple
 
-#include "DataFormats/Candidate/interface/CandidateFwd.h"
-#include "DataFormats/Common/interface/DetSetVectorNew.h"
 #include "DataFormats/Common/interface/Handle.h"
-#include "DataFormats/ParticleFlowReco/interface/PreIdFwd.h"
-#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
-#include "DataFormats/Phase2TrackerCluster/interface/Phase2TrackerCluster1D.h"
-#include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
-#include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "FWCore/Framework/interface/Event.h"
-#include "RecoEcal/EgammaCoreTools/interface/EcalClusterLazyTools.h"
+#include "test/ExtractHitsTracks/interface/Data.h"
 #include <vector>
 
 class TTree;
-
-constexpr size_t ARRAY_SIZE_MAX = 10000;
 
 class Ntuple {
   
  public:
   
-  static constexpr size_t NHITS_MAX = 30;
+  static constexpr size_t ARRAY_SIZE_MAX = 100000;
   static constexpr int NEG_INT = -10;
   static constexpr float NEG_FLOAT = -10.;
   static constexpr float NEG_FLOATSQ = -1.*NEG_FLOAT*NEG_FLOAT;
@@ -35,20 +26,38 @@ class Ntuple {
   
   void link_tree( TTree* tree );
 
-  void fill_evt( const edm::EventID& id ); 
-  void fill_clu( edmNew::DetSetVector<SiPixelCluster> const* siPixelClusters,
-		 edmNew::DetSetVector<Phase2TrackerCluster1D> const* siPhase2Clusters );
+  void fill_evt( const edm::EventID& id );
+  void fill_data( const std::vector<ntuple::Data>& data );
   
  public:
+
+  // Event scalars
+  Int_t run_ = 0;
+  Int_t lumi_ = 0;
+  Int_t evt_ = 0;
+
+  // RecHit
+  Int_t nhit_ = 0;
+  Int_t hit_n_ = 0;
+  Int_t hit_id_[ARRAY_SIZE_MAX] = {};
+  Float_t x_[ARRAY_SIZE_MAX] = {};
+  Float_t y_[ARRAY_SIZE_MAX] = {};
+  Float_t z_[ARRAY_SIZE_MAX] = {};
   
-  unsigned int run_ = 0;
-  unsigned int lumi_ = 0;
-  unsigned long long evt_ = 0;
+  // GEN
+  Int_t particle_id_[ARRAY_SIZE_MAX] = {};
+  Int_t pdg_id_[ARRAY_SIZE_MAX] = {};
+  Float_t px_[ARRAY_SIZE_MAX] = {};
+  Float_t py_[ARRAY_SIZE_MAX] = {};
   
-  int pixel_clu_n_ = 0;
-  int pixel_clu_size_[ARRAY_SIZE_MAX] = {};
-  int strip_clu_n_ = 0;
-  int strip_clu_size_[ARRAY_SIZE_MAX] = {};
+  // SimHit
+  Int_t sim_id_[ARRAY_SIZE_MAX] = {};
+  Float_t sim_dxy_sig_[ARRAY_SIZE_MAX] = {};
+  
+  // Geometry
+  Int_t volume_id_[ARRAY_SIZE_MAX] = {};
+  Int_t layer_id_[ARRAY_SIZE_MAX] = {};
+  Int_t module_id_[ARRAY_SIZE_MAX] = {};
 
 }; 
 
