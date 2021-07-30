@@ -8,5 +8,5 @@ git clone git@github.com:bainbrid/ExtractHitsTracks.git test
 scram b
 cd test/ExtractHitsTracks/run
 voms-proxy-init --voms cms
-cmsRun ntuplizer_test_cfg.py
+cmsRun test_cfg.py
 ```
