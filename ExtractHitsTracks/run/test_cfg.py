@@ -32,17 +32,21 @@ process.load("RecoLocalTracker.SiPixelRecHits.SiPixelRecHits_cfi")
 process.load("RecoLocalTracker.Phase2TrackerRecHits.Phase2TrackerRecHits_cfi")
 process.load("SimTracker.TrackerHitAssociation.tpClusterProducerDefault_cfi")
 # default: https://github.com/cms-sw/cmssw/blob/master/PhysicsTools/PatAlgos/python/slimming/prunedGenParticles_cfi.py
+
 process.load("PhysicsTools.PatAlgos.slimming.prunedGenParticles_cfi")
-process.prunedGenParticles.select = ["drop *",
-                                     #"keep abs(pdgId) == 13",
-                                     "keep abs(pdgId) == 211 && pt > 1. && abs(eta) < 2.5",]
+process.prunedGenParticles.select = ["drop *","keep abs(pdgId) == 211 && pt > 1. && abs(eta) < 0.5",]
+
 process.load("SimGeneral.TrackingAnalysis.simHitTPAssociation_cfi")
 process.load("SimTracker.TrackAssociatorProducers.quickTrackAssociatorByHits_cfi")
 process.load("SimTracker.TrackAssociation.trackingParticleRecoTrackAsssociation_cfi")
 process.trackingParticleRecoTrackAsssociation.associator = 'quickTrackAssociatorByHits'
 process.load("test.ExtractHitsTracks.TrackingParticleSelector_cfi")
 process.load("test.ExtractHitsTracks.Ntuplizer_cfi")
-process.ntuplizer.verbose = 2 # switch verbose mode on if >0
+process.ntuplizer.verbose = 0 # switch verbose mode on if >0
+process.ntuplizer.usePrunedGenParticles = False
+process.ntuplizer.activeTrackingRegions = [1,2,3] # IT only
+
+#process.load("RecoTracker.TkTrackingRegions.candidatePointSeededTrackingRegionsFromBeamSpot_cfi")
 
 process.p = cms.Path(process.siPixelRecHits*
                      process.siPhase2RecHits*
@@ -52,6 +56,7 @@ process.p = cms.Path(process.siPixelRecHits*
                      process.quickTrackAssociatorByHits*
                      process.trackingParticleRecoTrackAsssociation*
                      process.trackingParticleSelector*
+                     #process.candidatePointSeededTrackingRegionsFromBeamSpot*
                      process.ntuplizer
 )
 

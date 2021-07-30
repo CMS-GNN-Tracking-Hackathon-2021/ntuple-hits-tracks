@@ -38,14 +38,14 @@ class Ntuplizer : public edm::EDFilter {
   
 public:
   
-  explicit Ntuplizer( const edm::ParameterSet& );
+  explicit Ntuplizer(const edm::ParameterSet&);
   ~Ntuplizer();
   
-  virtual bool filter( edm::Event&, const edm::EventSetup& ) override;
+  virtual bool filter(edm::Event&, const edm::EventSetup&) override;
 
-  template <typename T> void match( const edmNew::DetSetVector<T>* hits );
+  template <typename T> void match(const edmNew::DetSetVector<T>* hits, size_t& hit_id);
   void match2(std::vector<ntuple::Data>&);
-  void readCollections( edm::Event&, const edm::EventSetup& );
+  void readCollections(edm::Event&, const edm::EventSetup&);
   void debug();
 
   // LIKELY TO BE DEPRECATED, USED BY match2()
@@ -64,6 +64,9 @@ private:
   Ntuple ntuple_;
   int verbose_;
   std::vector<ntuple::Data> signal_;
+  std::vector<ntuple::Data> bkgd_;
+
+  std::vector<int> activeTrackingRegions_;
 
   edm::EDGetTokenT<SiPixelRecHitCollection> pixelRecHitsToken_;
   SiPixelRecHitCollection const* pixelRecHits_;
@@ -77,7 +80,8 @@ private:
   edm::EDGetTokenT<reco::GenParticleCollection> genParticlesToken_;
   edm::Handle<reco::GenParticleCollection> genParticles_;
   //reco::GenParticleCollection const* genParticles_;
-  
+
+  bool usePrunedGenParticles_;
   edm::EDGetTokenT<edm::Association<reco::GenParticleCollection> > prunedGenParticlesToken_;
   //edm::Handle<edm::Association<reco::GenParticleCollection> > prunedGenParticles_;
   edm::Association<reco::GenParticleCollection> const* prunedGenParticles_;
@@ -91,8 +95,8 @@ private:
   const edm::EDGetTokenT<TrackingParticleCollection> trackingParticlesToken_;
   edm::Handle<TrackingParticleCollection> trackingParticles_;
 
-  const edm::EDGetTokenT<TrackingParticleCollection> prunedTrackingParticlesToken_;
-  TrackingParticleCollection const* prunedTrackingParticles_;
+  //const edm::EDGetTokenT<TrackingParticleCollection> prunedTrackingParticlesToken_;
+  //TrackingParticleCollection const* prunedTrackingParticles_;
 
   edm::EDGetTokenT<reco::TrackToTrackingParticleAssociator> tpToTracksToken_;
   const reco::TrackToTrackingParticleAssociator* tpToTracks_;
@@ -114,6 +118,8 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   ntuple_(),
   verbose_(cfg.getParameter<int>("verbose")),
   signal_(),
+  bkgd_(),
+  activeTrackingRegions_(cfg.getParameter<std::vector<int> >("activeTrackingRegions")),
   pixelRecHitsToken_(consumes<SiPixelRecHitCollection>(cfg.getParameter<edm::InputTag>("pixelRecHits"))),
   pixelRecHits_(),
   trackerRecHitsToken_(consumes<Phase2TrackerRecHit1DCollectionNew>(cfg.getParameter<edm::InputTag>("trackerRecHits"))),
@@ -122,6 +128,7 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   clustersToTP_(),
   genParticlesToken_(consumes<reco::GenParticleCollection>(cfg.getParameter<edm::InputTag>("genParticles"))),
   genParticles_(),
+  usePrunedGenParticles_(cfg.getParameter<bool>("usePrunedGenParticles")),
   prunedGenParticlesToken_(consumes<edm::Association<reco::GenParticleCollection> >(cfg.getParameter<edm::InputTag>("prunedGenParticles"))),
   prunedGenParticles_(),
   tpToSimHitsMapToken_(consumes<SimHitTPAssociationProducer::SimHitTPAssociationList>(cfg.getParameter<edm::InputTag>("tpToSimHits"))),
@@ -130,33 +137,63 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   ctfTracks_(),
   trackingParticlesToken_(consumes<TrackingParticleCollection>(cfg.getParameter<edm::InputTag>("trackingParticles"))),
   trackingParticles_(),
-  prunedTrackingParticlesToken_(consumes<TrackingParticleCollection>(cfg.getParameter<edm::InputTag>("prunedTrackingParticles"))),
-  prunedTrackingParticles_(),
+//prunedTrackingParticlesToken_(consumes<TrackingParticleCollection>(cfg.getParameter<edm::InputTag>("prunedTrackingParticles"))),
+//prunedTrackingParticles_(),
   tpToTracksToken_(consumes<reco::TrackToTrackingParticleAssociator>(cfg.getParameter<std::string>("tpToTracks"))),
   tpToTracks_(),
   topoToken_(esConsumes())
 {
   tree_ = fs_->make<TTree>("tree","tree");
   ntuple_.link_tree(tree_);
-  std::cout << "[Ntuplizer::Ntuplizer] Verbosity level: "<< verbose_ << std::endl;
+  if (verbose_>2) std::cout << "[Ntuplizer::Ntuplizer]" << std::endl;
+  std::cout << "[Ntuplizer::Ntuplizer]" << std::endl
+	    << " Verbosity level: "<< verbose_ << std::endl
+	    << " Number of activeTrackingRegions: "<< activeTrackingRegions_.size() << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
+  if (verbose_>2) std::cout << "[Ntuplizer::filter]" << std::endl;
   
   // Init
   ntuple_.reset();
   readCollections(event,setup);
   signal_.clear();
+  bkgd_.clear();
 
   // Populate
-  match<SiPixelRecHit>(pixelRecHits_);
-  match<Phase2TrackerRecHit1D>(trackerRecHits_);
+  size_t hit_id = 0;
+  match<SiPixelRecHit>(pixelRecHits_,hit_id);
+  match<Phase2TrackerRecHit1D>(trackerRecHits_,hit_id);
+
   std::sort(signal_.begin(), signal_.end());
   if (verbose_>1 && !signal_.empty()) {
+    std::cout << "SIGNAL HITS" << std::endl;
     std::stringstream ss; 
-    ntuple::print(ss,signal_);
+    ntuple::print(ss,signal_,10); // Print hits for first 10 particles only
+    std::cout << ss.str() << std::endl;
+  }
+
+  if (verbose_>2 && !bkgd_.empty()) {
+    int n = 20;
+    std::cout << "BKGD HITS" << std::endl;
+    std::stringstream ss;
+    ss << "Print summary of first "
+       << n
+       << " hits in std::vector<Data> (size: "
+       << bkgd_.size()
+       << ")" 
+       << std::endl;
+    int cntr = 0;
+    ntuple::header(ss);
+    ss << std::endl;
+    for ( auto data : bkgd_ ) { 
+      if ( n > 0 && cntr > n ) { continue; } 
+      ntuple::terse(ss,data);
+      ss << std::endl;
+      ++cntr;
+    }
     std::cout << ss.str() << std::endl;
   }
 
@@ -174,7 +211,9 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
 
   // Fill Ntuple
   ntuple_.fill_evt(event.id());
-  ntuple_.fill_data(signal_);
+  size_t index = 0;
+  ntuple_.fill_data(signal_,index);
+  ntuple_.fill_data(bkgd_,index);
   tree_->Fill(); 
   return true; 
 
@@ -183,6 +222,7 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
 ////////////////////////////////////////////////////////////////////////////////
 //
 void Ntuplizer::readCollections( edm::Event& event, const edm::EventSetup& setup ) { 
+  if (verbose_>2) std::cout << "[Ntuplizer::readCollections]" << std::endl;
   pixelRecHits_ = &event.get(pixelRecHitsToken_);
   trackerRecHits_ = &event.get(trackerRecHitsToken_);
   clustersToTP_ = &event.get(clustersToTPToken_);
@@ -191,7 +231,7 @@ void Ntuplizer::readCollections( edm::Event& event, const edm::EventSetup& setup
   prunedGenParticles_ = &event.get(prunedGenParticlesToken_);
   tpToSimHitsMap_ = &event.get(tpToSimHitsMapToken_);
   event.getByToken(trackingParticlesToken_,trackingParticles_);
-  prunedTrackingParticles_ = &event.get(prunedTrackingParticlesToken_);
+  //prunedTrackingParticles_ = &event.get(prunedTrackingParticlesToken_);
   event.getByToken(ctfTracksToken_,ctfTracks_);
   tpToTracks_ = &event.get(tpToTracksToken_);
   topo_ = &setup.getData(topoToken_);
@@ -201,7 +241,9 @@ void Ntuplizer::readCollections( edm::Event& event, const edm::EventSetup& setup
 ////////////////////////////////////////////////////////////////////////////////
 //
 void Ntuplizer::debug() {
+  if (verbose_>2) std::cout << "[Ntuplizer::debug]" << std::endl;
   if (verbose_<1) { return; }
+
   int pixelRecHits = 0;
   for ( auto const& detset : *pixelRecHits_ ) { pixelRecHits += detset.size(); }
   int trackerRecHits = 0;
@@ -224,7 +266,7 @@ void Ntuplizer::debug() {
 	    << " tpToSimHitsMap_->size(): " << tpToSimHitsMap
 	    << " (tp: " << tpToSimHitsMap_->size() << ")" << std::endl
 	    << " trackingParticles_->size(): " << trackingParticles_->size() << std::endl
-	    << " prunedTrackingParticles_->size(): " << prunedTrackingParticles_->size() << std::endl
+    //<< " prunedTrackingParticles_->size(): " << prunedTrackingParticles_->size() << std::endl
 	    << " ctfTracks_->size(): " << ctfTracks_->size() << std::endl;
 
 //  for ( unsigned int idx = 0; idx < genParticles_->size(); ++idx ) {
@@ -242,7 +284,8 @@ void Ntuplizer::debug() {
 ////////////////////////////////////////////////////////////////////////////////
 //
 template <typename T> 
-void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
+void Ntuplizer::match( const edmNew::DetSetVector<T>* hits, size_t& hit_id ) {
+  if (verbose_>2) std::cout << "[Ntuplizer::match]" << std::endl;
 
   reco::SimToRecoCollection associations = tpToTracks_->associateSimToReco(ctfTracks_,trackingParticles_);
 
@@ -250,11 +293,24 @@ void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
   for ( auto detSet = hits->begin(); detSet != hits->end(); ++detSet ) {
     for ( auto recHit = detSet->begin(); recHit != detSet->end(); ++recHit ) {
 
-      // Initialise container
-      ntuple::Data data;
+      // Initialise container (with unique id)
+      ntuple::Data data(hit_id);
       
       // Retrieve cluster
       const OmniClusterRef& clu = recHit->firstClusterRef();
+
+      // Store RecHit, Cluster, and DetId info (via Topo class)
+      data.recHit_ = &*recHit;
+      data.clu_ = &clu;
+      data.topo_ = ntuple::Topo(topo_,detSet->detId());
+      data.det_ = ntuple::innerOrOuter(&*recHit);
+      
+      // Check if RecHit is in one of the active tracking regions (if set)
+      auto iter = std::find(activeTrackingRegions_.begin(),
+			    activeTrackingRegions_.end(), 
+			    int(data.topo_.volume_));
+      if (!activeTrackingRegions_.empty() && 
+	  iter == activeTrackingRegions_.end()) { continue; }
 
       // Find associated TrackingParticles (can be more than one per cluster!)
       auto range_tp = clustersToTP_->equal_range(clu);
@@ -265,15 +321,17 @@ void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
       // Loop through TPs
       for ( auto tp = range_tp.first; tp != range_tp.second; ++tp ) {
 
+	// Set TP
+	data.tp_ = tp->second;
+
 	// If match already found, skip remaining TPs
-	if ( data.gen_.isNonnull() ) { continue; }
+	//if ( data.gen_.isNonnull() ) { continue; }
 
 	// Match one of GenParticles from TP against the pruned collection
 	const reco::GenParticleRefVector& genParticles = tp->second->genParticles();
 	for ( unsigned int idx = 0; idx < genParticles.size(); ++idx ) {
 	  const reco::GenParticleRef& gen = genParticles[idx];
-	  if ( (*prunedGenParticles_)[gen].isNonnull() ) {
-	    data.tp_ = tp->second;
+	  if ( !usePrunedGenParticles_ || (*prunedGenParticles_)[gen].isNonnull() ) {
 	    data.gen_ = gen;
 	    data.idx_ = gen.key();
 	    break; // register first GEN match
@@ -281,14 +339,8 @@ void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
 	}
 	
 	// If no match found, move onto next TP
-	if ( data.gen_.isNull() ) { continue; }
-
-	// Store RecHit, Cluster, and DetId info (via Topo class)
-	data.recHit_ = &*recHit;
-	data.clu_ = &tp->first;
-	data.topo_ = ntuple::Topo(topo_,detSet->detId());
-	data.det_ = ntuple::innerOrOuter(&*recHit);
-      
+	//if ( data.gen_.isNull() ) { continue; }
+	
 	// Record local position of RecHit (to find closest SimHit)
 	float x_rh = 0., y_rh = 0., xx_rh = 0., xy_rh = 0., yy_rh = 0.;
 	x_rh = data.recHit_->localPosition().x();
@@ -358,10 +410,14 @@ void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
 	}
 	
       } // Loop through TPs
-      
-      // Add container to the list if GEN match found
+
+      // Add container to one of the list, depending if GEN match is found
       if ( data.gen_.isNonnull() ) { signal_.push_back(data); }
+      else                         { bkgd_.push_back(data); }
       
+      // Increment (unique) hit_id counter, important!
+      ++hit_id;
+
     } // Loop through RecHits in DS
   } // Loop through DSs in DSV
   
@@ -370,7 +426,7 @@ void Ntuplizer::match( const edmNew::DetSetVector<T>* hits ) {
 ////////////////////////////////////////////////////////////////////////////////
 // LIKELY TO BE DEPRECATED, DO NOT USE
 void Ntuplizer::match2(std::vector<ntuple::Data>& vdata) {
-  std::cout << "[Ntuplizer::match2]" << std::endl;
+  if (verbose_>2) std::cout << "[Ntuplizer::match]" << std::endl;
 
   reco::SimToRecoCollection associations = tpToTracks_->associateSimToReco(ctfTracks_,trackingParticles_);
   

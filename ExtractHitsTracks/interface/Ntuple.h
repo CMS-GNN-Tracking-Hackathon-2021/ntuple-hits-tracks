@@ -12,52 +12,54 @@ class Ntuple {
   
  public:
   
-  static constexpr size_t ARRAY_SIZE_MAX = 100000;
-  static constexpr int NEG_INT = -10;
-  static constexpr float NEG_FLOAT = -10.;
-  static constexpr float NEG_FLOATSQ = -1.*NEG_FLOAT*NEG_FLOAT;
+  static constexpr size_t ARRAY_SIZE_MAX = 500000;
   
   Ntuple() {}
-  
-  void reset() {
-    Ntuple dummy;  // create a new object 
-    *this = dummy; // use assignment to reset
-  }
-  
-  void link_tree( TTree* tree );
+  void reset();
+  void link_tree(TTree* tree);
 
-  void fill_evt( const edm::EventID& id );
-  void fill_data( const std::vector<ntuple::Data>& data );
+  void fill_evt(const edm::EventID& id);
+  void fill_data(const std::vector<ntuple::Data>& data, size_t& index);
   
  public:
 
-  // Event scalars
+  // Event-level scalars
+
   Int_t run_ = 0;
   Int_t lumi_ = 0;
   Int_t evt_ = 0;
 
-  // RecHit
   Int_t nhit_ = 0;
   Int_t hit_n_ = 0;
-  Int_t hit_id_[ARRAY_SIZE_MAX] = {};
-  Float_t x_[ARRAY_SIZE_MAX] = {};
-  Float_t y_[ARRAY_SIZE_MAX] = {};
-  Float_t z_[ARRAY_SIZE_MAX] = {};
-  
+
+  // Event-level arrays
+
+  // RecHit
+  std::vector<int> hit_id_;
+
+  std::vector<float> x_;
+  std::vector<float> y_;
+  std::vector<float> z_;
+
   // GEN
-  Int_t particle_id_[ARRAY_SIZE_MAX] = {};
-  Int_t pdg_id_[ARRAY_SIZE_MAX] = {};
-  Float_t px_[ARRAY_SIZE_MAX] = {};
-  Float_t py_[ARRAY_SIZE_MAX] = {};
-  
+  std::vector<int> particle_id_;
+  std::vector<int> pdg_id_;
+  std::vector<float> gen_pt_;
+  std::vector<float> gen_eta_;
+  std::vector<float> gen_phi_;
+
   // SimHit
-  Int_t sim_id_[ARRAY_SIZE_MAX] = {};
-  Float_t sim_dxy_sig_[ARRAY_SIZE_MAX] = {};
-  
+  std::vector<int> sim_type_;
+  std::vector<int> sim_id_;
+  std::vector<float> sim_dxy_sig_;
+  std::vector<float> sim_pt_;
+  std::vector<float> sim_eta_;
+  std::vector<float> sim_phi_;
+
   // Geometry
-  Int_t volume_id_[ARRAY_SIZE_MAX] = {};
-  Int_t layer_id_[ARRAY_SIZE_MAX] = {};
-  Int_t module_id_[ARRAY_SIZE_MAX] = {};
+  std::vector<int> volume_id_;
+  std::vector<int> layer_id_;
+  std::vector<int> module_id_;
 
 }; 
 
