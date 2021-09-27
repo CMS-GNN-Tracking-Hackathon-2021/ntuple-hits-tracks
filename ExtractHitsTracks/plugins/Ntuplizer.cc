@@ -221,12 +221,6 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
   tree_->Fill(); 
  
    
-  BuildGraph graph; 
-  // if flagged as built, call the select hit function
-  if (buildGraph_){ 
-	graph.select_hits(&ntuple_.sim_pt_);  
-  }
-
 
 
   return true; 
