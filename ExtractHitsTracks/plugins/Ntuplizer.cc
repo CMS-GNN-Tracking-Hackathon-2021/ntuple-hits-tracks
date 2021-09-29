@@ -67,7 +67,7 @@ private:
   std::vector<ntuple::Data> bkgd_;
 
   std::vector<int> activeTrackingRegions_;
-  bool buildGraph_;   
+  //bool buildGraph_;   
 
   edm::EDGetTokenT<SiPixelRecHitCollection> pixelRecHitsToken_;
   SiPixelRecHitCollection const* pixelRecHits_;
