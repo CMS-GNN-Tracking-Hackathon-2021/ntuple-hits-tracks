@@ -122,7 +122,7 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   signal_(),
   bkgd_(),
   activeTrackingRegions_(cfg.getParameter<std::vector<int> >("activeTrackingRegions")),
-  buildGraph_(cfg.getParameter<bool>("buildGraph")),
+  //buildGraph_(cfg.getParameter<bool>("buildGraph")),
   pixelRecHitsToken_(consumes<SiPixelRecHitCollection>(cfg.getParameter<edm::InputTag>("pixelRecHits"))),
   pixelRecHits_(),
   trackerRecHitsToken_(consumes<Phase2TrackerRecHit1DCollectionNew>(cfg.getParameter<edm::InputTag>("trackerRecHits"))),
