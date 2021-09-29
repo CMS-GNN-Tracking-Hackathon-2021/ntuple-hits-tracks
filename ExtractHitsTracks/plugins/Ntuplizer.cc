@@ -28,7 +28,6 @@
 #include "TrackingTools/Records/interface/TransientRecHitRecord.h"
 #include "TrackingTools/TransientTrackingRecHit/interface/TransientTrackingRecHitBuilder.h"
 #include "test/ExtractHitsTracks/interface/Ntuple.h"
-#include "test/ExtractHitsTracks/interface/BuildGraph.h"
 #include "TTree.h"
 #include<iostream> 
 #include<string> 
