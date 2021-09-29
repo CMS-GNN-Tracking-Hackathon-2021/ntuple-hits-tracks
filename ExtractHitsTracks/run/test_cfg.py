@@ -56,7 +56,7 @@ process.load("test.ExtractHitsTracks.TrackingParticleSelector_cfi")
 process.load("test.ExtractHitsTracks.Ntuplizer_cfi")
 process.ntuplizer.verbose = 3 # switch verbose mode on if >0
 # added flag to say whether or not to build the graph
-process.ntuplizer.buildGraph = True 
+#process.ntuplizer.buildGraph = True 
 process.ntuplizer.usePrunedGenParticles = False
 process.ntuplizer.activeTrackingRegions = [1,2,3] # IT only
 
