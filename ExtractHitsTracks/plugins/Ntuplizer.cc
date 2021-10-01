@@ -28,10 +28,11 @@
 #include "TrackingTools/Records/interface/TransientRecHitRecord.h"
 #include "TrackingTools/TransientTrackingRecHit/interface/TransientTrackingRecHitBuilder.h"
 #include "test/ExtractHitsTracks/interface/Ntuple.h"
+#include "test/ExtractHitsTracks/interface/BuildGraph.h"
 #include "TTree.h"
 #include<iostream> 
 #include<string> 
-
+#include <fstream>
 ////////////////////////////////////////////////////////////////////////////////
 //
 class Ntuplizer : public edm::EDFilter {
@@ -67,6 +68,7 @@ private:
   std::vector<ntuple::Data> bkgd_;
 
   std::vector<int> activeTrackingRegions_;
+  bool buildGraph_;   
 
   edm::EDGetTokenT<SiPixelRecHitCollection> pixelRecHitsToken_;
   SiPixelRecHitCollection const* pixelRecHits_;
@@ -85,7 +87,8 @@ private:
   edm::EDGetTokenT<edm::Association<reco::GenParticleCollection> > prunedGenParticlesToken_;
   //edm::Handle<edm::Association<reco::GenParticleCollection> > prunedGenParticles_;
   edm::Association<reco::GenParticleCollection> const* prunedGenParticles_;
-
+ 
+  
   edm::EDGetTokenT<SimHitTPAssociationProducer::SimHitTPAssociationList> tpToSimHitsMapToken_;
   SimHitTPAssociationProducer::SimHitTPAssociationList const* tpToSimHitsMap_;
 
@@ -120,6 +123,7 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   signal_(),
   bkgd_(),
   activeTrackingRegions_(cfg.getParameter<std::vector<int> >("activeTrackingRegions")),
+  buildGraph_(cfg.getParameter<bool>("buildGraph")),
   pixelRecHitsToken_(consumes<SiPixelRecHitCollection>(cfg.getParameter<edm::InputTag>("pixelRecHits"))),
   pixelRecHits_(),
   trackerRecHitsToken_(consumes<Phase2TrackerRecHit1DCollectionNew>(cfg.getParameter<edm::InputTag>("trackerRecHits"))),
@@ -148,7 +152,8 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   if (verbose_>2) std::cout << "[Ntuplizer::Ntuplizer]" << std::endl;
   std::cout << "[Ntuplizer::Ntuplizer]" << std::endl
 	    << " Verbosity level: "<< verbose_ << std::endl
-	    << " Number of activeTrackingRegions: "<< activeTrackingRegions_.size() << std::endl;
+	    << " Number of activeTrackingRegions: "<< activeTrackingRegions_.size() << std::endl
+	    << "Building graph: "<< buildGraph_ << std::endl; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +201,6 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
     }
     std::cout << ss.str() << std::endl;
   }
-
   //////////
   // LIKELY TO BE DEPRECATED
   //  std::vector<ntuple::Data> vdata;
@@ -215,6 +219,25 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
   ntuple_.fill_data(signal_,index);
   ntuple_.fill_data(bkgd_,index);
   tree_->Fill(); 
+ 
+  BuildGraph graph; 
+  // if flagged as built, call the select hit function
+  if (buildGraph_){ 
+	std::vector<int> accepted_indices = graph.select_hits(&ntuple_);  
+	//graph.select_segments(&ntuple_, accepted_indices); 
+        graph.create_hit_pairs(&ntuple_, accepted_indices);
+
+ 	//dump to file 
+      	std::ofstream graphOutput;
+      	graphOutput.open ("built_graph.csv"); 
+        //std::copy(graph.outgraph.sim_pt.begin(), graph.outgraph.sim_pt.end(), std::ostream_iterator<std::string>(std::ofstream, "\n"));
+//	std::vector<float> testfloat = graph.outgraph.sim_pt; 
+        //graphOutput << graph.outgraph;
+        graphOutput.close();  
+  }
+
+
+
   return true; 
 
 } 
@@ -228,6 +251,8 @@ void Ntuplizer::readCollections( edm::Event& event, const edm::EventSetup& setup
   clustersToTP_ = &event.get(clustersToTPToken_);
   //genParticles_ = &event.get(genParticlesToken_);
   event.getByToken(genParticlesToken_,genParticles_);
+  
+  
   prunedGenParticles_ = &event.get(prunedGenParticlesToken_);
   tpToSimHitsMap_ = &event.get(tpToSimHitsMapToken_);
   event.getByToken(trackingParticlesToken_,trackingParticles_);
