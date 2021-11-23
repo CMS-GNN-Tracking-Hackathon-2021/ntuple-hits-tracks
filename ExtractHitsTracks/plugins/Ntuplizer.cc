@@ -29,6 +29,7 @@
 #include "TrackingTools/TransientTrackingRecHit/interface/TransientTrackingRecHitBuilder.h"
 #include "test/ExtractHitsTracks/interface/Ntuple.h"
 #include "test/ExtractHitsTracks/interface/BuildGraph.h"
+//#include "test/ExtractHitsTracks/interface/OutGraph.h"
 #include "TTree.h"
 #include<iostream> 
 #include<string> 
@@ -69,6 +70,7 @@ private:
 
   std::vector<int> activeTrackingRegions_;
   bool buildGraph_;   
+  //bool buildGraph_;   
 
   edm::EDGetTokenT<SiPixelRecHitCollection> pixelRecHitsToken_;
   SiPixelRecHitCollection const* pixelRecHits_;
@@ -124,6 +126,7 @@ Ntuplizer::Ntuplizer( const edm::ParameterSet& cfg ) :
   bkgd_(),
   activeTrackingRegions_(cfg.getParameter<std::vector<int> >("activeTrackingRegions")),
   buildGraph_(cfg.getParameter<bool>("buildGraph")),
+  //buildGraph_(cfg.getParameter<bool>("buildGraph")),
   pixelRecHitsToken_(consumes<SiPixelRecHitCollection>(cfg.getParameter<edm::InputTag>("pixelRecHits"))),
   pixelRecHits_(),
   trackerRecHitsToken_(consumes<Phase2TrackerRecHit1DCollectionNew>(cfg.getParameter<edm::InputTag>("trackerRecHits"))),
@@ -222,6 +225,7 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
  
   BuildGraph graph; 
   // if flagged as built, call the select hit function
+  std::cout<<"buildGraph_ is "<<buildGraph_<<std::endl; 
   if (buildGraph_){ 
 	std::vector<int> accepted_indices = graph.select_hits(&ntuple_);  
 	//graph.select_segments(&ntuple_, accepted_indices); 
@@ -232,11 +236,14 @@ bool Ntuplizer::filter(edm::Event& event, const edm::EventSetup& setup ) {
       	graphOutput.open ("built_graph.csv"); 
         //std::copy(graph.outgraph.sim_pt.begin(), graph.outgraph.sim_pt.end(), std::ostream_iterator<std::string>(std::ofstream, "\n"));
 //	std::vector<float> testfloat = graph.outgraph.sim_pt; 
-        //graphOutput << graph.outgraph;
+        OutGraph output = graph.get_outgraph(); 
+	graphOutput.write((char*)&output, sizeof(output));
         graphOutput.close();  
+        graph.print_outgraph(); 
+	std::cout<<"this should be printed here"<<std::endl; 
   }
 
-
+   
 
   return true; 
 

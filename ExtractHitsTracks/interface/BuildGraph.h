@@ -5,7 +5,7 @@
 #include <vector>
 #include <math.h> 
 #include <cmath> 
-#include "test/ExtractHitsTracks/interface/OutputGraph.h"
+#include "test/ExtractHitsTracks/interface/OutGraph.h"
 
 
 
@@ -47,13 +47,21 @@ class BuildGraph {
   
   public:
   BuildGraph() {}  
-  OutputGraph outgraph; 
+  OutGraph outgraph; 
  // std::vector<int> vec_hit_index1, vec_hit_index2; 
  
   float calc_r (float x, float y) { return sqrt(pow(x, 2)+ pow(y, 2));}
   
   //OutputGraph build_graph(Ntuple *nt){ 
    // std::vector<float> accepted_indices = select_hits(nt);  
+ 
+//class BuildGraph {
+
+//  public:
+//  BuildGraph() {}  
+
+
+
     
   std::vector<int> select_hits(Ntuple *nt){
   /* Performs pt cut 
@@ -68,6 +76,7 @@ class BuildGraph {
     //should be a config variable instead
     int pt_cut = 2;  
   
+    std::cout<<"length of sim pt"<<nt->sim_pt_.size()<<std::endl; 
     auto it = std::find_if(std::begin(nt->sim_pt_), std::end(nt->sim_pt_), [pt_cut](int i){return i > pt_cut;});
     while (it != std::end(nt->sim_pt_)) {
       accepted_hit_indices.emplace_back(std::distance(std::begin(nt->sim_pt_), it));
@@ -145,7 +154,11 @@ class BuildGraph {
    return new_accepted_hit_indices; 
   }
   
- void  create_hit_pairs(Ntuple *nt, std::vector<int> accepted_indices){ 
+// void  create_hit_pairs(Ntuple *nt, std::vector<int> accepted_indices){ 
+//   return new_accepted_hit_indices; 
+//  }
+  
+  void create_hit_pairs(Ntuple *nt, std::vector<int> accepted_indices){ 
     // create the layer combos 
     std::vector<std::pair<int, int>> layer_combos; 
     for(int i =1; i!=28; i++){
@@ -165,8 +178,9 @@ class BuildGraph {
     }
 
     //return std::pair(hit1_indices, hit2_indices); 
+    }
 
-  }
+
 
   void select_segments(Ntuple *nt, std::vector<int> hit1_indices, std::vector<int> hit2_indices){ 
     // find all possible combinations of the two lists 
@@ -191,7 +205,14 @@ class BuildGraph {
 	float z0_max = 27; 
         if ((z0 < z0_max) & (phi_slope < phi_slope_max)) { 
 	  index_accepted_segment.push_back(std::pair(hit1_index, hit2_index)); 
-   
+  
+	  outgraph.X.r.push_back(r1); 
+	  outgraph.X.r.push_back(r2); 
+	  outgraph.X.phi.push_back(nt->sim_phi_.at(hit1_index));  
+	  outgraph.X.phi.push_back(nt->sim_phi_.at(hit2_index));
+	  outgraph.X.z.push_back(nt->z_.at(hit1_index)); 
+	  outgraph.X.z.push_back(nt->z_.at(hit2_index)); 
+  
 	  outgraph.edge_attr.dr.push_back(dr/1000); 
           outgraph.edge_attr.dphi.push_back(dphi/3.14); 
 	  outgraph.edge_attr.dz.push_back(dz/1000); 
@@ -200,12 +221,24 @@ class BuildGraph {
 	  outgraph.edge_index.seg_end.push_back(hit2_index);  
 	
 	
+	
         } 
       }
     }
-}		
+}
 
 
+  OutGraph get_outgraph(){ 
+    return outgraph;
+  }
+
+  void print_outgraph(){ 
+   
+   std::cout<<"number of edges "<<outgraph.edge_attr.dr.size()<<std::endl;   
+   // std::cout<<"X.r"<<std::endl; 
+   // for(auto i = outgraph.X.r.begin(); i!= outgraph.X.r.end(); i++) 
+   //   std::cout<<*i<<std::endl;     
+  }
   // probably root functions for this somewhere
   float calc_dphi(float phi1, float phi2){ 
     float dphi = phi2 - phi1; 
@@ -231,6 +264,10 @@ class BuildGraph {
     // feature scaling  
 
   //}
+
+
+
+
   };
 
 

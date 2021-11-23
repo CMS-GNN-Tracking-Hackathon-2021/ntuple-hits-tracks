@@ -1,3 +1,8 @@
+#include<vector> 
+
+
+
+
 struct Xvec { 
   std::vector<float> r, phi, z; 
 }; 
@@ -11,7 +16,7 @@ struct EdgeIndex{
   std::vector<int> seg_start, seg_end; 
 }; 
 
-class OutputGraph{ 
+class OutGraph{ 
   public: 
     Xvec X; 
     EdgeAttributes edge_attr; 

@@ -16,4 +16,5 @@ ntuplizer = cms.EDFilter(
     #prunedTrackingParticles = cms.InputTag("trackingParticleSelector"),
     tpToTracks = cms.string('quickTrackAssociatorByHits'),
     buildGraph = cms.bool(True),
+    #buildGraph = cms.bool(True),
 )
